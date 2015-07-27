@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Countdown Configuration</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/bootstrap-theme.min.css" rel="stylesheet">
+	
+	<script type="text/javascript" src="js/jquery.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/md5.js"></script>
+  </head>
+  <body>
+  <center>
+  <div class="container">
+    <h2>OpenSprinkler</h2>
+	<div class="form-configure well">
+    <h3>connection settings</h3>
+	<br>
+	<p>Device Name:<br>
+	<input type="text" size="30" maxlength="20" id="os_text1" value="Home">
+	</p>
+	
+	<p>OpenSprinkler IP:<br>
+	<input type="text" size="30" maxlength="20" id="os_text2" value="home.dyndns.org:8080">
+	</p>
+	
+	<p>Password:<br>
+	<input type="password" size="30" maxlength="20" id="os_text3" value="">
+	</p>
+	
+	<br>
+
+    <p>
+    <button class="btn btn-lg btn-primary btn-block" id="save_button">Save</button>
+    </p>
+	</div>
+	</center>
+	</div>
+	<div class="footer container">
+
+	</div>
+    <script>
+		/*
+		var year	= document.getElementById("year");
+		var mon		= document.getElementById("mon");
+		var day		= document.getElementById("day");
+		var hour	= document.getElementById("hour");
+		var min		= document.getElementById("min");
+		var sec		= document.getElementById("sec");
+		*/
+		var text1	= document.getElementById("os_text1");
+		var text2	= document.getElementById("os_text2");
+		var text3	= document.getElementById("os_text3");
+		
+        //var modeSelect 	= document.getElementById("mode_select");
+		//var startSelect = document.getElementById("day_start");
+		//var endSelect 	= document.getElementById("day_end");
+		//var vibe 		= document.getElementById("vibe");
+		
+		var mText1;
+		var mText2;
+		var mText3;
+		//var mYear;
+		//var mMon;
+		//var mDay;
+		//var mHour;
+		//var mMin;
+		//var mSec;
+		
+		$().ready(function () {
+
+		//read data from storage
+        mText1 		= localStorage.getItem("os_text1");
+		mText2 		= localStorage.getItem("os_text2");
+		mText3 		= localStorage.getItem("os_text3");
+		
+		/*
+		mYear 		= localStorage.getItem("year");
+		mMon 		= localStorage.getItem("mon");
+		mDay 		= localStorage.getItem("day");
+		mHour 		= localStorage.getItem("hour");
+		mMin 		= localStorage.getItem("min");
+		mSec 		= localStorage.getItem("sec");
+		mVibe 		= localStorage.getItem("vibe");
+		*/
+		//mBlink = parseInt(localStorage.getItem("blink"));      
+        
+		//set default
+		//if(isNaN(mYear)){mYear = 2;}
+		//if(isNaN(mMon)){mMon = 11;}
+		//if(isNaN(mDay)){mDay = 23;}		
+		
+        //set value     
+        if(isNaN(mText1)){$('#os_text1').prop('value', mText1)}; 
+		$('#os_text2').prop('value', mText2);
+		$('#os_text3').prop('value', mText3);
+		/*
+		year.options[mYear].selected 	= true;
+		mon.options[mMon].selected 		= true;
+		day.options[mDay].selected 		= true;
+		hour.options[mHour].selected	= true;
+		min.options[mMin].selected 		= true;
+		sec.options[mSec].selected 		= true;
+		vibe.options[mVibe].selected	= true;
+		*/
+		});
+	
+      //Setup to allow easy adding more options later
+      function saveOptions() {
+
+		//save data
+		localStorage.setItem ('os_text1', text1.value);
+		localStorage.setItem ('os_text2', text2.value);
+		localStorage.setItem ('os_text3', text3.value);
+		/*
+		localStorage.setItem ('year', year.selectedIndex);
+		localStorage.setItem ('mon',  mon.selectedIndex);
+		localStorage.setItem ('day',  day.selectedIndex);
+		localStorage.setItem ('hour', hour.selectedIndex);
+		localStorage.setItem ('min',  min.selectedIndex);
+		localStorage.setItem ('sec',  sec.selectedIndex);
+		localStorage.setItem ('vibe', vibe.selectedIndex);
+		*/
+		
+        var options = {
+		  "name"	: text1.value,
+		  "link"	: text2.value,
+		  "pass"	: MD5(text3.value)
+		  //"year"	: parseInt(year.options[year.selectedIndex].value),
+		  //"mon"		: parseInt(mon.selectedIndex +1),
+		  //"day"		: parseInt(day.selectedIndex +1),
+		  //"hour"	: parseInt(hour.selectedIndex),
+		  //"min"		: parseInt(min.selectedIndex),
+		  //"sec"		: parseInt(sec.selectedIndex),
+		  
+          //"mode"	: modeSelect.options[modeSelect.selectedIndex].value,
+		  //"start"	: parseInt(startSelect.options[startSelect.selectedIndex].value),
+		  //"end"		: parseInt(endSelect.options[endSelect.selectedIndex].value),
+		  //"vibe"	: parseInt(vibe.selectedIndex)
+        }
+        
+        return options;
+      };
+
+      var submitButton = document.getElementById("save_button");
+      submitButton.addEventListener("click", 
+        function() {
+          console.log("Submit");
+
+          var options = saveOptions();
+          var location = "pebblejs://close#" + encodeURIComponent(JSON.stringify(options));
+          
+          document.location = location;
+        }, 
+      false);
+    </script>
+  </body>
+</html>
