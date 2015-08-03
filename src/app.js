@@ -1,11 +1,22 @@
 /**
  * Welcome to OpenSprinkler Remote!
  *
- * first Version. Just to test. 
+ * first Version. Just to test. v 1.1
  *
  * Project Ideas:
  * - show the Sprinkler Programs in the queue
  * - 
+ *
+ * V 1.1 bugfix
+ * - fix: last run station name
+ * - add: sunrise and sunset
+ *
+ * V 1.0 init release
+ * - show status and running stations
+ * - show water lever & last running station & last updatetime
+ * - set rain delay in hours
+ * - set stations manual on in minutes
+ * - stop all station function
  */
 
 var UI = require('ui');
@@ -155,9 +166,9 @@ function ts2time (unixtimestamp){
 	}
 }
 
-function min2time(min){
-	var h = Math.floor(min%60);
-	var m = Math.floor(min-(60*h));
+function min2time(time){
+	var h = Math.floor(time/60);
+	var m = Math.floor(time-(60*h));
 	if(m<10){
 		return h+':0'+m;
 	}else{
@@ -255,10 +266,10 @@ function show_result(){
 			'Status: ' + status(data_jc) + '\n\n' +
 			//'Rain delay: ' + (data.rd == '0' ? 'no delay' : ts2date(data.rdst) + ' ' + ts2time(data.rdst) ) + '\n\n' +
 			'Water Level: ' + data_jo.wl + '%\n\n' +
-			'Last Run: ' + (data_jc.lrun[3] == '0' ? '-' : '' + getStationName(data_jc.lrun[0]) + '\n' +
+			'Last Run: ' + (data_jc.lrun[3] == '0' ? '-' : '' + getStationName(data_jc.lrun[0] +1) + '\n' +
 											ts2date(timezone(data_jc.lrun[3])) + ' ' + ts2time(timezone(data_jc.lrun[3])) + ' (' + Math.round(data_jc.lrun[2]/60*10)/10 + ' min)' ) + '\n\n' +
-			'Sunrise: ' + min2time(data_jo.sunrise) + '\n' +
-			'Sunset: ' + min2time(data_jo.sunset) + '\n\n' +
+			'Sunrise: ' + min2time(data_jc.sunrise) + '\n' +
+			'Sunset: ' + min2time(data_jc.sunset) + '\n\n' +
 			'last update: ' + ts2time(now/1000)
 		);
 		
