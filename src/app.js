@@ -25,11 +25,12 @@ var Accel = require('ui/accel');
 var Vibe = require('ui/vibe');
 var Vector2 = require('vector2');
 
-var debug = false;	//true;
+var debug = false;	//true/false;
 
 var data_jc;	//Controller Variables
 var data_jo;	//Options
 var data_jn;	//Staition Names and Attributes
+var data_jp;	//Program Names and Attributes
 
 var error = false;
 var StationMenu = [];
@@ -38,12 +39,21 @@ var RunningTime = 0;
 var mode = '';
 var option = '';
 var TimeCard = new UI.Window();
-var StMenu = new UI.Menu({
-	sections: [{
-		title: 'Manual Mode',
-		//items: getStationMenu()
-	}]
+var SetCard = new UI.Window();
+var StMenu = new UI.Menu({sections: [{title: 'Manual Mode'}]}); //station Menu
+var PrgMenu = new UI.Menu({sections: [{title: 'Run Program'}]}); //Program Menu
+
+var SetCardText = new UI.Text({
+  position: new Vector2(10, 50),
+  size: new Vector2(124, 50),
+  text: 'Set Data',
+  font:'RESOURCE_ID_GOTHIC_28_BOLD',
+  color:'black',
+  textOverflow:'wrap',
+  textAlign:'center',
+  backgroundColor:'white'
 });
+
 // Create a background Rect
 var bgRect = new UI.Rect({
   position: new Vector2(10, 30),
@@ -83,6 +93,7 @@ var TimeCardInfo = new UI.Text({
 });
 
 // Add Rect to Window
+SetCard.add(SetCardText);
 TimeCard.add(bgRect);
 TimeCard.add(TimeCardTitle);
 TimeCard.add(TimeCardTime);
@@ -118,7 +129,6 @@ var settings = {
 	}	
 };
 
-
 //load the Setting at start up
 settings.load();
 
@@ -131,7 +141,7 @@ var card = new UI.Card({
 	subtitle	: (firstRun ? 'Welcome' : 'Loading...'),
 	body			: (firstRun ? '\nPlease go the settings page.' : ''),
 	scrollable: true,
-	style			: 'small'
+	style			: 'large' //small
 });
 
 
@@ -207,6 +217,7 @@ Pebble.addEventListener("webviewclosed",
   }
 );
 
+//Menu-generator
 function getStationMenu() {
   StationIds = [];//clear StationIds
 	var items = [];
@@ -237,22 +248,49 @@ function getStationMenu() {
 		check = check << 1; //go the next bit		
 	}
 	
+	/*
 	items.push({
 				title: 'Stop all'
 				//subtitle: 'some info'
 			});
+	*/
 	
 	// Finally return whole array	
   return items;
-}
+} //create the Stations for the Manual Mode Menu
 
+function getPrgMenu() {
+	var items = [];
+    
+	if(debug){console.log('creat Programs');}
+	
+	//test run
+	items.push({
+				title: 'Test All Stations',
+				subtitle: 'run all St. for 1 min'
+			});
+	
+	for(var x = 0;x<data_jp.pd.length;x++){
+			
+			// Add to menu items array
+			items.push({
+				title: data_jp.pd[x][5],
+				//subtitle: 'subtitle'
+			});
+	}
+	
+	//write result to the menu
+	PrgMenu.items(0, items);
+}	//create the Program Menu
+
+//main Page
 function show_error(){
 	//show the error
 	
 	if(debug){console.log('Failed loading data: ' + error);}
 	card.subtitle('ERROR:');
 	card.body('No OpenSprinkler found. Please check the connection settings.');	
-}
+} 	//build the error Page
 
 function show_result(){
 	//show the results or error	
@@ -266,7 +304,7 @@ function show_result(){
 			'Status: ' + status(data_jc) + '\n\n' +
 			//'Rain delay: ' + (data.rd == '0' ? 'no delay' : ts2date(data.rdst) + ' ' + ts2time(data.rdst) ) + '\n\n' +
 			'Water Level: ' + data_jo.wl + '%\n\n' +
-			'Last Run: ' + (data_jc.lrun[3] == '0' ? '-' : '' + getStationName(data_jc.lrun[0] +1) + '\n' +
+			'Last Run: ' + (data_jc.lrun[3] == '0' ? '-' : '\n' + getStationName(data_jc.lrun[0] +1) + '\n' +
 											ts2date(timezone(data_jc.lrun[3])) + ' ' + ts2time(timezone(data_jc.lrun[3])) + ' (' + Math.round(data_jc.lrun[2]/60*10)/10 + ' min)' ) + '\n\n' +
 			'Sunrise: ' + min2time(data_jc.sunrise) + '\n' +
 			'Sunset: ' + min2time(data_jc.sunset) + '\n\n' +
@@ -274,7 +312,6 @@ function show_result(){
 		);
 		
 		//generate the station menu
-		//StationMenu = getStationMenu();
 		StMenu.items(0, getStationMenu());
 
 	}else{ //ERROR detected
@@ -282,7 +319,7 @@ function show_result(){
 		card.subtitle('ERROR:');
 		switch(parseInt(data_jc.result)){
 			case 2: 
-				card.body('Unauthorized');
+				card.body('Unauthorized\n\ncheck the password');
 				break;
 			case 3: 
 				card.body('Missmath');
@@ -306,8 +343,9 @@ function show_result(){
 				card.body('Ups - something goes wrong.');
 		}
 	}
-}
+}	//build the Main Page
 
+//ajax functions
 function get_jc(){
 	
 	var URL = 'http://' + settings.link + '/jc?pw=' + settings.pass;	
@@ -331,7 +369,7 @@ function get_jc(){
 				show_error();
 			}
 		); //end ajax
-}
+}   //get controller vars -  calls jo
 
 function get_jo(){
 	
@@ -356,7 +394,7 @@ function get_jo(){
 				show_error();
 			}
 		); //end ajax
-}
+}		//get controller options - calls jn
 
 function get_jn(){	
 	var URL = 'http://' + settings.link + '/jn?pw=' + settings.pass;	
@@ -372,7 +410,8 @@ function get_jn(){
 				}
 				data_jn = data;
 				//return data;
-				show_result();
+				show_result(); //show the results
+				get_jp(); //get program datas
 			},
 			function(error) {
 				// Failure!
@@ -380,30 +419,85 @@ function get_jn(){
 				show_error();
 			}
 		); //end ajax
-}
+}		//get names - calls result and jp
+
+function get_jp(){	
+	var URL = 'http://' + settings.link + '/jp?pw=' + settings.pass;	
+	return ajax(
+			{
+				url: URL,
+				type: 'json'
+			},
+			function(data){
+				if(debug){
+					console.log("Successfully loading data!");
+					console.log('Data: ' + JSON.stringify(data));
+				}
+				data_jp = data;
+
+				getPrgMenu();
+			},
+			function(error) {
+				// Failure!
+				error = true;
+				show_error();
+			}
+		); //end ajax
+}		//get prgrams
 
 function set_settings(){	//set controller var	
 	
+	SetCard.show();
+	
 	var URL = 'http://' + settings.link + '/' + mode +'?pw=' + settings.pass;
 	
-	if(mode == 'cm'){
+	if(mode == 'cm'){ //set station runtime
 		if(StationIds.length > option){ //namal Stations
 			if(RunningTime>0){ 
 				option = 'sid=' + StationIds[option] + '&en=1&t=' + (RunningTime*60);
 			}else{
-				option = 'sid=' + StationIds[option] + '&en=0';
+				option = 'sid=' + StationIds[option] + '&en=0'; //station off
 			}
 			URL += '&' + option;
 		}else{	//stopp all station
-			//mode = 'cv';
-			//option = 'rsn=1';
 			URL = 'http://' + settings.link + '/cv?pw=' + settings.pass + '&rsn=1';
 		}				
-	}else{
+	}else if(mode == 'cr'){ //run Programms
+		
+		if(debug){console.log('start Run-Once Program ajax request ' + option);}
+		
+		var out = [];//[0,0,60,60,0,60,0,0];
+		if(option === 0){  //TestProgramm
+			//stations Ids //
+			
+			for(var x = 0; x < (data_jc.nbrd*8); x++){
+				if(StationIds.indexOf(x) >= 0){  //is x in the StationIds?
+					out.push(60); //add 60s
+					if(debug){console.log('push: ' + x + ' - 60');}
+				}else{
+					out.push(0); //add 0s
+					if(debug){console.log('push: ' + x + ' - 0');}
+				}
+				//URL += '&t=[' + out.toString() + ']';
+			}
+			
+			//if(debug){console.log('out: &t=[' + out.toString() + ']');}
+			URL += '&t=[' + out.toString() + ']';
+			
+		}else{ //Run Programs
+			
+			if(debug){console.log('push: ' + JSON.stringify(data_jp.pd[option-1][4]));}
+			//out = JSON.stringify(data_jp.pd[option-1][4]);
+			
+			URL += '&t=' + JSON.stringify(data_jp.pd[option-1][4]) + '';
+		}
+		
+		
+	}else	{ //normal settings
 		URL += '&' + option + '=' + RunningTime;	
 	}	
 	
-	if(debug){console.log("Send data:" + URL);}
+	if(debug){console.log("Send data: " + URL);}
 	
 	ajax(
 		{
@@ -418,25 +512,27 @@ function set_settings(){	//set controller var
 			update();
 			Vibe.vibrate('short');
 			TimeCard.hide();
+			SetCard.hide();
 			//Vibe.vibrate('short');
 		},
 		function(error) {
 			// Failure!
 		}
 	); //end ajax
-}
+} //call the ajax to set settingson the OpenSprinkler
 
 //the status function, check for errors and the currend activity ;) 
 function status(data){
-	
+	var text = false;
+	var out = '';
 	//enabled
-	if(data.en == '0'){ return 'OS disabled'; }
+	if(data.en == '0'){ out += '\nOS disabled'; text = true; }
 	//rain delay
-	if(data.rd != '0'){ return 'rain delay\n' + 'until: ' + ts2date(timezone(data.rdst)) + ' ' + ts2time(timezone(data.rdst)); }
+	if(data.rd != '0'){ out += '\nrain delay ' + 'until: ' + ts2date(timezone(data.rdst)) + ' ' + ts2time(timezone(data.rdst)); text = true; }
 	//rain sensor
-	if(data.rs != '0'){ return 'Rain sensor says its raining\n'; }
+	if(data.rs != '0'){ out += '\nRain sensor says its raining\n'; text = true; }
 	//weather call check
-	if(data.devt - data.lcwc > 7200){ return 'last weather update is to old (' + ts2date(timezone(data.lswc)) + ' ' + ts2time(timezone(data.lswc)) + ')'; }
+	if(data.devt - data.lcwc > 7200){ out += '\nlast weather update is to old (' + ts2date(timezone(data.lswc)) + ' ' + ts2time(timezone(data.lswc)) + ')'; text = true;}
 	
 	var station = '';
 	for(var x = 0; x < data.sbits.length; x++){
@@ -448,16 +544,28 @@ function status(data){
 			}
 		}	
 	}
-	if(station !== ''){return '' + station + ' running';}
+	if(station !== ''){out += '\n' + station + ' is running'; text = true;}
 	
-	return 'active - all fine';
+	if(!text){out = 'active - all fine';}
+	
+	return out;
 }
 
 // Construct Menu to show to user
 var OsMenu = new UI.Menu({
   sections: [{
     title: settings.name,
-		items: (0, [ { title: 'Set Rain Delay' }, { title: 'Manual Mode' } ])
+		items: (0, [ 
+			{ title: 'Set Rain Delay' }, 
+			{ title: 'Manual Mode' },
+			{ title: 'Run Program' }
+		])
+  },{
+    title: 'action',
+		items: (0, [ 
+			{ title: 'Reset Rain Delay' },
+			{ title: 'Stop all' }
+		])
   }]
 });
 
@@ -467,6 +575,54 @@ OsMenu.on('select', function(e) {
 		console.log('The item is titled "' + e.item.title + '"');
 		console.log('stations: "' + StationMenu.toString());
 	}
+	switch(e.sectionIndex){
+		case 0: //section 0
+			
+			switch(e.itemIndex){
+				case 0:	//set Rain Delay
+					mode = 'cv';
+					option = 'rd';
+					TimeCardTitle.text('Rain delay');
+					TimeCardInfo.text('hour');
+					TimeCard.show();
+					break;
+				case 1:	//Manual Mode
+					StMenu.show();
+					break;
+				case 2:	//Programs
+					PrgMenu.show();
+					break;
+				default: break;
+			}
+			
+			break;
+		case 1: //section action
+			
+			switch(e.itemIndex){
+				case 0:	//resetet Rain Delay
+					mode = 'cv';
+					option = 'rd';
+					RunningTime = 0;
+					
+					set_settings(); //send the command
+					//OsMenu.hide(); //go back
+					break;
+				case 1:	//stop all
+					mode = 'cv';
+					option = 'rsn';
+					RunningTime = 1;
+					
+					set_settings(); //send the command
+					//OsMenu.hide();
+					break;
+
+				default: break;
+			}
+			
+			break;
+	}
+	
+	/*
 	if(e.itemIndex === 0){ //rain delay
 		mode = 'cv';
 		option = 'rd';
@@ -475,8 +631,9 @@ OsMenu.on('select', function(e) {
 		TimeCard.show();
 	}
 	if(e.itemIndex === 1){ //manual Mode
-		StMenu.show();		
+		//StMenu.show();		
 	}
+	*/
 });
 
 StMenu.on('select', function(e) {
@@ -489,17 +646,41 @@ StMenu.on('select', function(e) {
 	mode = 'cm';
 	option = e.itemIndex;
 	
-	if(StationIds.length > e.itemIndex ){
+	if(StationIds.length > e.itemIndex ){ //show Timecard
 		//mode = 'cm';
 		//option = e.itemIndex;
 		TimeCardTitle.text(e.item.title);
 		TimeCardInfo.text('min');
 		TimeCard.show();
-	}else{
+	}else{ //stop all
 		set_settings();
 		StMenu.hide();
 	}
 });
+
+PrgMenu.on('select', function(e) {
+  if(debug){
+		console.log('Selected item #' + e.itemIndex + ' of section #' + e.sectionIndex);
+		console.log('The item is titled "' + e.item.title + '"');
+		//console.log('stations: ' + StationMenu.toString());
+	}
+	
+	mode = 'cr';  //start run one Program
+	option = e.itemIndex;//e.itemIndex;
+	
+	set_settings();
+
+	if(e.itemIndex === 0 ){ //Test Mode
+		//mode = 'cm';
+		//option = e.itemIndex;
+		//TimeCardTitle.text(e.item.title);
+		//TimeCardInfo.text('min');
+		//TimeCard.show();
+	}else{ //Programs
+		
+		//StMenu.hide();
+	}
+});  // Programm Menu
 
 TimeCard.on('click', 'select', function(e) {
 	set_settings();
@@ -570,6 +751,7 @@ function update(){
 		//call get_jo
 		//call get_jn
 		//show results
+		//call get_jp
 	}else{
 		card.title		= 'OpenSprinkler';
 		card.subtitle	= 'Welcome';

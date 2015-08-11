@@ -40,8 +40,9 @@
     "shortName": "OpenSprinkler",
     "uuid": "13eae2e9-bdc8-4cc7-a013-2dfd37b33e55",
     "versionCode": 1,
-    "versionLabel": "1.0",
+    "versionLabel": "1.2",
     "watchapp": {
+        "hiddenApp": false,
         "watchface": false
     }
 }
