@@ -5,20 +5,22 @@
  *
  * Project Ideas:
  * - show logs, calc runningtime for Progs and Stations (daily, weekly, monthly) - very complex
- * - show next planned run (look for the next scheduled program, show Stations in the queue) - mähhh
+ * - show next planned run (look for the next scheduled progra) - mähhh
  * - bigger (bold) font for better reading (maybe as an option) 
+ * - Info Menu wiht Version, Creator Name, Thanks too and bla bla 
  * 
  *
  * V 1.3
- *
+ * - in progess..
  *
  * V 1.2 add features
- * - add: Run Programs to run Test and Run-Once Progs
+ * - add: Run Programs Menu to run Test and Run-Once Progs
  * - add: show the Sprinkler Programs in the queue and running Time
  * - add: Menu for "reset Rain delay" and "Stop All"
  * - fix: bigger text on mainpage
  * - fix: rename "manual Mode" to "Run Stations" and place it at top in the menu
  * - add: funnny sayings on the "loading..." screen
+ * - add: show Stations in the queue on the Mainepage
  *
  * V 1.1 bugfix
  * - fix: last run station name
@@ -591,12 +593,16 @@ function status(data){
 		check = check << 1; //go the next bit		
 	}
 	
-	//add running Staions
-	if(text){out += '\n\n';}
-	if(StRun !== ''){out += '' + StRun + ' is running'; text = true;}
+	//add running Staions	
+	if(StRun !== ''){
+		if(text){out += '\n\n';}
+		out += '' + StRun + ' is running'; text = true;
+	}
 	//add waiting Stations
-	if(text){out += '\n\n';}
-	if(StWait !== ''){out += '' + StWait + ' waiting'; text = true;}
+	if(StWait !== ''){
+		if(text){out += '\n\n';}
+		out += '' + StWait + ' waiting'; text = true;
+	}
 	
 	//no status set - it will be all fine 
 	if(!text){out = 'active - all fine';}
