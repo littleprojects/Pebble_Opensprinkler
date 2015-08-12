@@ -1,11 +1,24 @@
 /**
  * Welcome to OpenSprinkler Remote!
  *
- * first Version. Just to test. v 1.1
+ * first Version. Just to test. v 1.2
  *
  * Project Ideas:
- * - show the Sprinkler Programs in the queue
- * - 
+ * - show logs, calc runningtime for Progs and Stations (daily, weekly, monthly) - very complex
+ * - show next planned run (look for the next scheduled program, show Stations in the queue) - mähhh
+ * - bigger (bold) font for better reading (maybe as an option) 
+ * 
+ *
+ * V 1.3
+ *
+ *
+ * V 1.2 add features
+ * - add: Run Programs to run Test and Run-Once Progs
+ * - add: show the Sprinkler Programs in the queue and running Time
+ * - add: Menu for "reset Rain delay" and "Stop All"
+ * - fix: bigger text on mainpage
+ * - fix: rename "manual Mode" to "Run Stations" and place it at top in the menu
+ * - add: funnny sayings on the "loading..." screen
  *
  * V 1.1 bugfix
  * - fix: last run station name
@@ -35,13 +48,15 @@ var data_jp;	//Program Names and Attributes
 var error = false;
 var StationMenu = [];
 var StationIds	= [];
-var RunningTime = 0;
-var mode = '';
-var option = '';
+var RunningTime = 0;//global URL RunningTime
+var mode = '';			//global URL mode var			URL:Port/mode?pw=password&option=RunningTime
+var option = '';		//global URL option var
 var TimeCard = new UI.Window();
 var SetCard = new UI.Window();
-var StMenu = new UI.Menu({sections: [{title: 'Manual Mode'}]}); //station Menu
+var StMenu = new UI.Menu({sections: [{title: 'Run Station'}]}); //station Menu
 var PrgMenu = new UI.Menu({sections: [{title: 'Run Program'}]}); //Program Menu
+var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','deleting internet','kickstart engine','searching satellites','call Dr. How','drinking coffe','overtaking World',
+								'licking ice cream','expanding the Universe','solving 0/0','counting starts','BAZINGA!','00100101 OK'];
 
 var SetCardText = new UI.Text({
   position: new Vector2(10, 50),
@@ -236,7 +251,16 @@ function getStationMenu() {
 		if(!(data_jn.stn_dis[row] & check)){
 			var subtitle = null;
 			//is running
-			if(data_jc.sbits[row] & check){subtitle = 'running';}
+			
+			
+			if(data_jc.ps[x][1]>0){ //check runtime
+				if(data_jc.sbits[row] & check){
+					subtitle = 'running';
+				}else	{
+					subtitle ='wait';
+				}
+				subtitle += ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+			}
 			
 			// Add to menu items array
 			items.push({
@@ -539,7 +563,7 @@ function status(data){
 		if(data.sbits[x] > 0){
 			var check = 1;
 			for(var y = 0; y < 8; y++){
-				if(data.sbits[x] & check){ station += ((station !== '' ? ', ' : '') + getStationName(y+1+(8*x)));}
+				if(data.sbits[x] & check){ station += ((station !== '' ? ', ' : '') + getStationName(y+1+(8*x)) + ' (' +  Math.round(data_jc.ps[y+(8*x)][1]/60) + ' min)' );}
 				check = check << 1;
 			}
 		}	
@@ -551,14 +575,14 @@ function status(data){
 	return out;
 }
 
-// Construct Menu to show to user
+// MAIN Menu constructor
 var OsMenu = new UI.Menu({
   sections: [{
     title: settings.name,
 		items: (0, [ 
-			{ title: 'Set Rain Delay' }, 
-			{ title: 'Manual Mode' },
-			{ title: 'Run Program' }
+			{ title: 'Run Station' },
+			{ title: 'Run Program' },
+			{ title: 'Set Rain Delay' }
 		])
   },{
     title: 'action',
@@ -579,18 +603,19 @@ OsMenu.on('select', function(e) {
 		case 0: //section 0
 			
 			switch(e.itemIndex){
-				case 0:	//set Rain Delay
+				case 0:	//Run Station menu
+					StMenu.show();
+					break;
+				case 1:	//Run Programs Menu
+					PrgMenu.show();
+					break;
+				case 2:	//set Rain Delay Menu
 					mode = 'cv';
 					option = 'rd';
 					TimeCardTitle.text('Rain delay');
 					TimeCardInfo.text('hour');
+					
 					TimeCard.show();
-					break;
-				case 1:	//Manual Mode
-					StMenu.show();
-					break;
-				case 2:	//Programs
-					PrgMenu.show();
 					break;
 				default: break;
 			}
@@ -621,19 +646,6 @@ OsMenu.on('select', function(e) {
 			
 			break;
 	}
-	
-	/*
-	if(e.itemIndex === 0){ //rain delay
-		mode = 'cv';
-		option = 'rd';
-		TimeCardTitle.text('Rain delay');
-		TimeCardInfo.text('hour');
-		TimeCard.show();
-	}
-	if(e.itemIndex === 1){ //manual Mode
-		//StMenu.show();		
-	}
-	*/
 });
 
 StMenu.on('select', function(e) {
@@ -744,7 +756,10 @@ function update(){
 	if(!firstRun){
 		
 		card.subtitle('Loading...');
-		card.body('');
+		
+		var textId = Math.floor((Math.random() * LoadSpell.length)); 
+		
+		card.body('\n' + LoadSpell[textId]);
 		
 		get_jc(); 
 		//call get_jc 
