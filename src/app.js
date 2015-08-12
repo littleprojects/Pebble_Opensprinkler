@@ -56,7 +56,7 @@ var SetCard = new UI.Window();
 var StMenu = new UI.Menu({sections: [{title: 'Run Station'}]}); //station Menu
 var PrgMenu = new UI.Menu({sections: [{title: 'Run Program'}]}); //Program Menu
 var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','deleting internet','kickstart engine','searching satellites','call Dr. How','drinking coffe','overtaking World',
-								'licking ice cream','expanding the Universe','solving 0/0','counting starts','BAZINGA!','00100101 OK'];
+								'licking ice cream','expanding the Universe','solving 0/0','counting stars','BAZINGA!','00100101 OK'];
 
 var SetCardText = new UI.Text({
   position: new Vector2(10, 50),
@@ -253,8 +253,8 @@ function getStationMenu() {
 			//is running
 			
 			
-			if(data_jc.ps[x][1]>0){ //check runtime
-				if(data_jc.sbits[row] & check){
+			if(data_jc.ps[x][1]>0){ //check if runtime>0
+				if(data_jc.sbits[row] & check){ //check if running now
 					subtitle = 'running';
 				}else	{
 					subtitle ='wait';
@@ -271,14 +271,7 @@ function getStationMenu() {
 		}		
 		check = check << 1; //go the next bit		
 	}
-	
-	/*
-	items.push({
-				title: 'Stop all'
-				//subtitle: 'some info'
-			});
-	*/
-	
+		
 	// Finally return whole array	
   return items;
 } //create the Stations for the Manual Mode Menu
@@ -314,7 +307,7 @@ function show_error(){
 	if(debug){console.log('Failed loading data: ' + error);}
 	card.subtitle('ERROR:');
 	card.body('No OpenSprinkler found. Please check the connection settings.');	
-} 	//build the error Page
+} //build the error Page
 
 function show_result(){
 	//show the results or error	
@@ -325,7 +318,7 @@ function show_result(){
 
 		card.subtitle(settings.name);
 		card.body(
-			'Status: ' + status(data_jc) + '\n\n' +
+			'' + status(data_jc) + '\n\n' + //Status
 			//'Rain delay: ' + (data.rd == '0' ? 'no delay' : ts2date(data.rdst) + ' ' + ts2time(data.rdst) ) + '\n\n' +
 			'Water Level: ' + data_jo.wl + '%\n\n' +
 			'Last Run: ' + (data_jc.lrun[3] == '0' ? '-' : '\n' + getStationName(data_jc.lrun[0] +1) + '\n' +
@@ -558,6 +551,7 @@ function status(data){
 	//weather call check
 	if(data.devt - data.lcwc > 7200){ out += '\nlast weather update is to old (' + ts2date(timezone(data.lswc)) + ' ' + ts2time(timezone(data.lswc)) + ')'; text = true;}
 	
+	/*
 	var station = '';
 	for(var x = 0; x < data.sbits.length; x++){
 		if(data.sbits[x] > 0){
@@ -569,7 +563,42 @@ function status(data){
 		}	
 	}
 	if(station !== ''){out += '\n' + station + ' is running'; text = true;}
+	*/
+	var row = 0;
+	var check = 1;
+	var StRun = '';
+	var StWait = '';
 	
+	for(var x = 0; x < (data_jc.nbrd*8); x++){
+		row = Math.floor(x/8);		
+		if(x%8 === 0){check=1;} //reset Check at the next row
+		
+			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
+		
+		//compare the bit if Hide
+		if(!(data_jn.stn_dis[row] & check)){		
+			
+			if(data_jc.ps[x][1]>0){ //check if runtime>0
+				if(data_jc.sbits[row] & check){ //check if running now
+					//subtitle = 'running';
+					StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+				}else	{
+					//subtitle ='wait';
+					StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+				}
+			}
+		}		
+		check = check << 1; //go the next bit		
+	}
+	
+	//add running Staions
+	if(text){out += '\n\n';}
+	if(StRun !== ''){out += '' + StRun + ' is running'; text = true;}
+	//add waiting Stations
+	if(text){out += '\n\n';}
+	if(StWait !== ''){out += '' + StWait + ' waiting'; text = true;}
+	
+	//no status set - it will be all fine 
 	if(!text){out = 'active - all fine';}
 	
 	return out;
