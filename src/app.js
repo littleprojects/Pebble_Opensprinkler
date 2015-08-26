@@ -7,10 +7,15 @@
  * - show logs, calc runningtime for Progs and Stations (daily, weekly, monthly) - very complex
  * - show next planned run (look for the next scheduled progra) - mähhh
  * - bigger (bold) font for better reading (maybe as an option) 
- * - Info Menu wiht Version, Creator Name, Thanks too and bla bla 
- * 
+ * - Info Menu wiht Version, Creator Name, Thanks too and bla bla
+ * - count rain delay down
+ * - check BT connection, vibe on disconnect
+ * - more program info
  *
  * V 1.3
+ * - add: update running Time (main page, station menu) counting down the time
+ * - add: Main menu info of running and waiting stations, Rain delay, active Programs
+ * - fix: dobble update at app start
  * - in progess..
  *
  * V 1.2 add features
@@ -40,7 +45,7 @@ var Accel = require('ui/accel');
 var Vibe = require('ui/vibe');
 var Vector2 = require('vector2');
 
-var debug = false;	//true/false;
+var debug = true;	//true/false;
 
 var data_jc;	//Controller Variables
 var data_jo;	//Options
@@ -50,15 +55,20 @@ var data_jp;	//Program Names and Attributes
 var error = false;
 var StationMenu = [];
 var StationIds	= [];
+//var stRun				= { station : [], dur : [] };			//array of running stations [name, time(sec)]
+//var stWait			= { station : [], dur : [] };
 var RunningTime = 0;//global URL RunningTime
 var mode = '';			//global URL mode var			URL:Port/mode?pw=password&option=RunningTime
 var option = '';		//global URL option var
 var TimeCard = new UI.Window();
 var SetCard = new UI.Window();
+// MAIN Menu constructor
+
 var StMenu = new UI.Menu({sections: [{title: 'Run Station'}]}); //station Menu
 var PrgMenu = new UI.Menu({sections: [{title: 'Run Program'}]}); //Program Menu
-var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','deleting internet','kickstart engine','searching satellites','call Dr. How','drinking coffe','overtaking World',
-								'licking ice cream','expanding the Universe','solving 0/0','counting stars','BAZINGA!','00100101 OK'];
+var updateTime = '';
+var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','kickstart engine','searching satellites','call Dr. How','drinking coffe','overtaking World',
+								'licking ice cream','expanding the Universe','solving 0/0','counting stars','BAZINGA!','00100101 OK']; //'deleting internet',
 
 var SetCardText = new UI.Text({
   position: new Vector2(10, 50),
@@ -149,6 +159,23 @@ var settings = {
 //load the Setting at start up
 settings.load();
 
+var OsMenu = new UI.Menu({
+  sections: [{
+    title: settings.name,
+		items: (0, [ 
+			{ title: 'Run Station' },
+			{ title: 'Run Program' },
+			{ title: 'Set Rain Delay', subtitle: '' }
+		])
+  },{
+    title: 'action',
+		items: (0, [ 
+			{ title: 'Reset Rain Delay' },
+			{ title: 'Stop all' }
+		])
+  }]
+});
+
 var firstRun = true;
 if(settings.pass !== ''){firstRun = false;}
 
@@ -234,7 +261,7 @@ Pebble.addEventListener("webviewclosed",
   }
 );
 
-//Menu-generator
+//Staion -Menu-generator
 function getStationMenu() {
   StationIds = [];//clear StationIds
 	var items = [];
@@ -247,7 +274,7 @@ function getStationMenu() {
 		row = Math.floor(x/8);		
 		if(x%8 === 0){check=1;} //reset Check at the next row
 		
-			if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
+			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
 		
 		//compare the bit if Hide
 		if(!(data_jn.stn_dis[row] & check)){
@@ -429,6 +456,7 @@ function get_jn(){
 				}
 				data_jn = data;
 				//return data;
+				getStationStatus(); //fill the running Station array
 				show_result(); //show the results
 				get_jp(); //get program datas
 			},
@@ -547,25 +575,22 @@ function status(data){
 	//enabled
 	if(data.en == '0'){ out += '\nOS disabled'; text = true; }
 	//rain delay
-	if(data.rd != '0'){ out += '\nrain delay ' + 'until: ' + ts2date(timezone(data.rdst)) + ' ' + ts2time(timezone(data.rdst)); text = true; }
+	if(data.rd != '0'){ 
+		out += '\nrain delay ' + 'until: ' + ts2date(timezone(data.rdst)) + ' ' + ts2time(timezone(data.rdst)); text = true; 
+		//OsMenu.sections[0].items[1][2].subtitle = 'is activ';
+		OsMenu.item(0, 2, { subtitle: 'is activ until'  + ts2time(timezone(data.rdst))});
+	}else{
+		OsMenu.item(0, 2, { subtitle: '' });
+	}
 	//rain sensor
 	if(data.rs != '0'){ out += '\nRain sensor says its raining\n'; text = true; }
 	//weather call check
 	if(data.devt - data.lcwc > 7200){ out += '\nlast weather update is to old (' + ts2date(timezone(data.lswc)) + ' ' + ts2time(timezone(data.lswc)) + ')'; text = true;}
 	
-	/*
-	var station = '';
-	for(var x = 0; x < data.sbits.length; x++){
-		if(data.sbits[x] > 0){
-			var check = 1;
-			for(var y = 0; y < 8; y++){
-				if(data.sbits[x] & check){ station += ((station !== '' ? ', ' : '') + getStationName(y+1+(8*x)) + ' (' +  Math.round(data_jc.ps[y+(8*x)][1]/60) + ' min)' );}
-				check = check << 1;
-			}
-		}	
-	}
-	if(station !== ''){out += '\n' + station + ' is running'; text = true;}
-	*/
+	var reload = false;
+	var pid = 0;
+	var runCount = 0;
+	var waitCount = 0;
 	var row = 0;
 	var check = 1;
 	var StRun = '';
@@ -584,49 +609,63 @@ function status(data){
 				if(data_jc.sbits[row] & check){ //check if running now
 					//subtitle = 'running';
 					StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+					reload = true; 
+					runCount ++;
+					pid = data_jc.ps[x][0];
 				}else	{
 					//subtitle ='wait';
 					StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+					waitCount ++;
 				}
 			}
 		}		
 		check = check << 1; //go the next bit		
 	}
 	
+	var subtitle = '';		
+	if(runCount>0){subtitle = runCount + ' station run';}
+	if(runCount>0 && waitCount){subtitle +=  ', ';}
+	if(waitCount>0){subtitle += waitCount + ' wait';}	
+	OsMenu.item(0, 0, { subtitle: subtitle });
+	
 	//add running Staions	
 	if(StRun !== ''){
 		if(text){out += '\n\n';}
 		out += '' + StRun + ' is running'; text = true;
 	}
+	
+	//show program or manual mode
+	subtitle = '';
+	if( runCount > 0 ){
+		if( pid > 0 && pid < 90){
+			out += '\n' + data_jp.pd[pid][5] + ' active'; //data_jp.pd[pid][5]
+			subtitle = '' + data_jp.pd[pid][5] + ' active';
+		}else{			
+			out += '\n- started manually';
+		}
+	}
+	OsMenu.item(0, 1, { subtitle: subtitle });
+	
 	//add waiting Stations
 	if(StWait !== ''){
 		if(text){out += '\n\n';}
 		out += '' + StWait + ' waiting'; text = true;
-	}
+	}	
 	
 	//no status set - it will be all fine 
 	if(!text){out = 'active - all fine';}
 	
+	if(reload){
+		//show_result(); //update the cards and menus
+		if(updateTime === ''){
+			updateTime = setInterval(updateStationTime,10000); //do it again in 10 sec
+		}
+	}else{
+		updateTime = ''; //stop the loop
+	}
+	
 	return out;
 }
-
-// MAIN Menu constructor
-var OsMenu = new UI.Menu({
-  sections: [{
-    title: settings.name,
-		items: (0, [ 
-			{ title: 'Run Station' },
-			{ title: 'Run Program' },
-			{ title: 'Set Rain Delay' }
-		])
-  },{
-    title: 'action',
-		items: (0, [ 
-			{ title: 'Reset Rain Delay' },
-			{ title: 'Stop all' }
-		])
-  }]
-});
 
 OsMenu.on('select', function(e) {
   if(debug){
@@ -764,7 +803,7 @@ TimeCard.on('longClick', 'down', function(e) {
 });
 
 card.on('show', function(){
-	update();
+	//update();
 });
 
 card.on('click', 'select', function() {
@@ -786,8 +825,6 @@ function update(){
 	if(debug){console.log("Start update..");}	
 	
 	// Construct URL
-	//var URL = 'https://dl.dropboxusercontent.com/u/46109611/OS/test.jc2';
-
 	if(!firstRun){
 		
 		card.subtitle('Loading...');
@@ -816,6 +853,122 @@ function getStationName(station){
 	}	
 	return data_jn.snames[station-1];	
 }
+
+function getStationStatus(){
+	
+	/*
+	var row = 0;
+	var check = 1;
+	
+	stRun.station = [];
+	stRun.dur = [];
+	stWait.station = [];
+	stWait.dur = [];
+	
+	for(var x = 0; x < (data_jc.nbrd*8); x++){
+		row = Math.floor(x/8);		
+		if(x%8 === 0){check=1;} //reset Check at the next row
+		
+			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
+		
+		//compare the bit if Hide
+		if(!(data_jn.stn_dis[row] & check)){		
+			
+			if(data_jc.ps[x][1]>0){ //check if runtime>0
+				if(data_jc.sbits[row] & check){ //check if running now
+					//subtitle = 'running';
+					//StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+					stRun.station.push( data_jn.snames[x] );
+					stRun.dur.push( data_jc.ps[x][1] );
+				}else	{
+					//subtitle ='wait';
+					//StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+					stWait.station.push( data_jn.snames[x] );
+					stWait.dur.push( data_jc.ps[x][1]);
+				}
+			}
+		}		
+		check = check << 1; //go the next bit		
+	}
+	
+	if(stRun.station.length > 0){
+		updateTime = setInterval(updateStationStatus,10000);
+	}else{
+		updateTime = '';
+	}
+	*/
+}
+
+function updateStationTime(){
+	
+	var reload = false;
+	var row = 0;
+	var check = 1;
+	
+	for(var x = 0; x < (data_jc.nbrd*8); x++){
+		row = Math.floor(x/8);		
+		if(x%8 === 0){check=1;} //reset Check at the next row
+		
+			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
+		
+		//compare the bit if Hide
+		if(!(data_jn.stn_dis[row] & check)){		
+			
+			if(data_jc.ps[x][1]>0){ //check if runtime>0
+				if(data_jc.sbits[row] & check){ 
+					//check if running now
+					data_jc.ps[x][1] = data_jc.ps[x][1] - 10; // - 10 sec
+					
+					if(debug){console.log('---------> update Time: ' + x + ' ' + data_jn.snames[x]  + ' dur: ' + data_jc.ps[x][1] + ' = ' + Math.round(data_jc.ps[x][1]/60) + ' min' );}
+					
+					if(data_jc.ps[x][1] <= 0){
+						data_jc.ps[x][1] = 0;
+						//update = true;
+						update();
+					}
+					reload = true;
+
+					//StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+				}else	{ 
+					//waiting station					
+					//StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+				}
+			}
+		}		
+		check = check << 1; //go the next bit		
+	}
+	
+	if(reload){
+		//updateTime = ''; //stop the loop
+		show_result(); //update the cards and menus
+		//updateTime = setInterval(updateStationTime,10000); //do it again in 10 sec
+	}else{
+		//updateTime = ''; //stop the loop
+	}
+	
+	
+	/*
+	for(var x = 0; x < stRun.dur.length; x++){
+		if( stRun.dur[x] >= 0 ){
+			//stRun.dur[x] --;
+			stRun.dur[x] = stRun.dur[x] - 10;
+			
+			if(debug){console.log('---------> update Time: ' + x + ' ' + stRun.station[x] + ' dur: ' + stRun.dur[x] + ' = ' + Math.round(stRun.dur[x]/60) + ' min' );}
+			//update main card
+			show_result();
+			
+			//update station menu
+			
+		}else{
+			if(debug){console.log('---------> start Update:');}
+			update();
+			//getStationStatus();
+		}
+	}
+	*/
+}
+
+
 
 // Display the Card
 card.show();
