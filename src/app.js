@@ -422,6 +422,8 @@ function get_jc(){
 				}
 				data_jc = data;
 				//return data;
+				card.subtitle('Loading.');
+				
 				get_jo();
 			},
 			function(error) {
@@ -447,6 +449,8 @@ function get_jo(){
 				}
 				data_jo = data;
 				//return data;
+				card.subtitle('Loading..');
+				
 				get_jn();
 			},
 			function(error) {
@@ -470,7 +474,8 @@ function get_jn(){
 					console.log('Data: ' + JSON.stringify(data));
 				}
 				data_jn = data;
-				show_result(); //show the results
+				card.subtitle('Loading...');
+		
 				get_jp(); //get program datas
 			},
 			function(error) {
@@ -496,6 +501,8 @@ function get_jp(){
 				data_jp = data;
 
 				getPrgMenu();
+				
+				show_result(); //show the results
 			},
 			function(error) {
 				// Failure!
@@ -643,24 +650,23 @@ function status(data){
 	if(waitCount>0){subtitle += waitCount + ' wait';}	
 	OsMenu.item(0, 0, { subtitle: subtitle });
 	
-	//add running Staions	
-	if(StRun !== ''){
-		if(text){out += '\n\n';}
-		out += '' + StRun + ' is running'; text = true;
-	}
-	
 	//show program or manual mode
 	subtitle = '';
 	if( runCount > 0 ){
+		if(text){out += '\n\n';}
 		if( pid > 0 && pid < 90){ //is a program
-			out += '\n' + data_jp.pd[pid][5] + ' active'; //data_jp.pd[pid][5]
-			subtitle = '' + data_jp.pd[pid][5] + ' active';
+			out += '' + data_jp.pd[pid-1][5] + ' active:\n'; //data_jp.pd[pid][5]
+			subtitle = '' + data_jp.pd[pid-1][5] + ' active';
 		}else{ //is a manual run
-			out += '\n- started manually';
+			out += 'started manually:\n';
 		}
 	}
 	OsMenu.item(0, 1, { subtitle: subtitle }); //add info to the Run Program menu Item
 	
+	//add running Staions	
+	if(StRun !== ''){
+		out += '' + StRun + ' is running'; text = true;
+	}	
 	//add waiting Stations
 	if(StWait !== ''){
 		if(text){out += '\n\n';}
