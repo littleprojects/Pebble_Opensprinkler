@@ -5,17 +5,16 @@
  *
  * Project Ideas:
  * - show logs, calc runningtime for Progs and Stations (daily, weekly, monthly) - very complex
- * - show next planned run (look for the next scheduled progra) - mähhh
- * - bigger (bold) font for better reading (maybe as an option) 
- * - Info Menu wiht Version, Creator Name, Thanks too and bla bla
+ * - show next planned run (look for the next scheduled program) - mähhh 
+ * - Info Menu wiht Version, Creator Name, Thanks to and bla bla
  * - count rain delay down
- * - check BT connection, vibe on disconnect
- * - more program info
+ * - check BT connection, vibe on disconnect - ask forum
  *
  * V 1.3
- * - add: update running Time (main page, station menu) counting down the time
+ * - add: update running Time (main page, station menu) counting down the time every 10 sec
  * - add: Main menu info of running and waiting stations, Rain delay, active Programs
  * - fix: dobble update at app start
+ * - add: more program info (station, duration)
  * - in progess..
  *
  * V 1.2 add features
@@ -45,7 +44,7 @@ var Accel = require('ui/accel');
 var Vibe = require('ui/vibe');
 var Vector2 = require('vector2');
 
-var debug = true;	//true/false;
+var debug = false;	//true/false;  //send output to the log console
 
 var data_jc;	//Controller Variables
 var data_jo;	//Options
@@ -230,6 +229,12 @@ function min2time(time){
 	}	
 }
 
+function sec2string(sec){
+	if( sec < 60 ){ return sec + ' sec'; }
+	if( sec < 3600 ){  return Math.round(sec/60) + ' min';}
+	return Math.round( sec / 60 / 60 * 10) / 10 + ' h';
+}
+
 //link to the config website
 Pebble.addEventListener("showConfiguration",
   function(e) {
@@ -313,15 +318,25 @@ function getPrgMenu() {
 	//test run
 	items.push({
 				title: 'Test All Stations',
-				subtitle: 'run all St. for 1 min'
+				subtitle: 'run all st. for 1 min'
 			});
 	
 	for(var x = 0;x<data_jp.pd.length;x++){
 			
+			var st = 0;
+			var dur = 0;
+		
+			for(var y = 0; y < data_jp.pd[x][4].length; y++){
+				if (data_jp.pd[x][4][y] > 0){
+					st++;
+					dur += data_jp.pd[x][4][y];
+				}
+			}
+		
 			// Add to menu items array
 			items.push({
 				title: data_jp.pd[x][5],
-				//subtitle: 'subtitle'
+				subtitle: st + ' st., ' + sec2string(dur) + ' run-time'
 			});
 	}
 	
@@ -455,8 +470,6 @@ function get_jn(){
 					console.log('Data: ' + JSON.stringify(data));
 				}
 				data_jn = data;
-				//return data;
-				getStationStatus(); //fill the running Station array
 				show_result(); //show the results
 				get_jp(); //get program datas
 			},
@@ -557,6 +570,7 @@ function set_settings(){	//set controller var
 				console.log('Data: ' + JSON.stringify(data));
 			}
 			update();
+			
 			Vibe.vibrate('short');
 			TimeCard.hide();
 			SetCard.hide();
@@ -622,6 +636,7 @@ function status(data){
 		check = check << 1; //go the next bit		
 	}
 	
+	//add info to Station menu item
 	var subtitle = '';		
 	if(runCount>0){subtitle = runCount + ' station run';}
 	if(runCount>0 && waitCount){subtitle +=  ', ';}
@@ -637,14 +652,14 @@ function status(data){
 	//show program or manual mode
 	subtitle = '';
 	if( runCount > 0 ){
-		if( pid > 0 && pid < 90){
+		if( pid > 0 && pid < 90){ //is a program
 			out += '\n' + data_jp.pd[pid][5] + ' active'; //data_jp.pd[pid][5]
 			subtitle = '' + data_jp.pd[pid][5] + ' active';
-		}else{			
+		}else{ //is a manual run
 			out += '\n- started manually';
 		}
 	}
-	OsMenu.item(0, 1, { subtitle: subtitle });
+	OsMenu.item(0, 1, { subtitle: subtitle }); //add info to the Run Program menu Item
 	
 	//add waiting Stations
 	if(StWait !== ''){
@@ -854,51 +869,6 @@ function getStationName(station){
 	return data_jn.snames[station-1];	
 }
 
-function getStationStatus(){
-	
-	/*
-	var row = 0;
-	var check = 1;
-	
-	stRun.station = [];
-	stRun.dur = [];
-	stWait.station = [];
-	stWait.dur = [];
-	
-	for(var x = 0; x < (data_jc.nbrd*8); x++){
-		row = Math.floor(x/8);		
-		if(x%8 === 0){check=1;} //reset Check at the next row
-		
-			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
-		
-		//compare the bit if Hide
-		if(!(data_jn.stn_dis[row] & check)){		
-			
-			if(data_jc.ps[x][1]>0){ //check if runtime>0
-				if(data_jc.sbits[row] & check){ //check if running now
-					//subtitle = 'running';
-					//StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
-					stRun.station.push( data_jn.snames[x] );
-					stRun.dur.push( data_jc.ps[x][1] );
-				}else	{
-					//subtitle ='wait';
-					//StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
-					stWait.station.push( data_jn.snames[x] );
-					stWait.dur.push( data_jc.ps[x][1]);
-				}
-			}
-		}		
-		check = check << 1; //go the next bit		
-	}
-	
-	if(stRun.station.length > 0){
-		updateTime = setInterval(updateStationStatus,10000);
-	}else{
-		updateTime = '';
-	}
-	*/
-}
-
 function updateStationTime(){
 	
 	var reload = false;
@@ -908,8 +878,6 @@ function updateStationTime(){
 	for(var x = 0; x < (data_jc.nbrd*8); x++){
 		row = Math.floor(x/8);		
 		if(x%8 === 0){check=1;} //reset Check at the next row
-		
-			//if(debug){console.log('Station '+x+' row: ' + row + ' ' + data_jn.snames[x]);}
 		
 		//compare the bit if Hide
 		if(!(data_jn.stn_dis[row] & check)){		
@@ -921,17 +889,12 @@ function updateStationTime(){
 					
 					if(debug){console.log('---------> update Time: ' + x + ' ' + data_jn.snames[x]  + ' dur: ' + data_jc.ps[x][1] + ' = ' + Math.round(data_jc.ps[x][1]/60) + ' min' );}
 					
-					if(data_jc.ps[x][1] <= 0){
+					if(data_jc.ps[x][1] <= 0){ //run-time is over
 						data_jc.ps[x][1] = 0;
 						//update = true;
 						update();
 					}
-					reload = true;
-
-					//StRun += (StRun !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
-				}else	{ 
-					//waiting station					
-					//StWait += (StWait !== '' ? ', ' : '') + data_jn.snames[x] + ' (' +  Math.round(data_jc.ps[x][1]/60) + ' min)';
+					reload = true; //values changed -> show it
 				}
 			}
 		}		
@@ -939,36 +902,9 @@ function updateStationTime(){
 	}
 	
 	if(reload){
-		//updateTime = ''; //stop the loop
 		show_result(); //update the cards and menus
-		//updateTime = setInterval(updateStationTime,10000); //do it again in 10 sec
-	}else{
-		//updateTime = ''; //stop the loop
-	}
-	
-	
-	/*
-	for(var x = 0; x < stRun.dur.length; x++){
-		if( stRun.dur[x] >= 0 ){
-			//stRun.dur[x] --;
-			stRun.dur[x] = stRun.dur[x] - 10;
-			
-			if(debug){console.log('---------> update Time: ' + x + ' ' + stRun.station[x] + ' dur: ' + stRun.dur[x] + ' = ' + Math.round(stRun.dur[x]/60) + ' min' );}
-			//update main card
-			show_result();
-			
-			//update station menu
-			
-		}else{
-			if(debug){console.log('---------> start Update:');}
-			update();
-			//getStationStatus();
-		}
-	}
-	*/
+	}	
 }
-
-
 
 // Display the Card
 card.show();
