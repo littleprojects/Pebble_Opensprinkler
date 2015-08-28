@@ -50,6 +50,7 @@ var data_jc;	//Controller Variables
 var data_jo;	//Options
 var data_jn;	//Staition Names and Attributes
 var data_jp;	//Program Names and Attributes
+var data_wl;	//Logdata waterlevel
 
 var error = false;
 var StationMenu = [];
@@ -61,6 +62,10 @@ var mode = '';			//global URL mode var			URL:Port/mode?pw=password&option=Runnin
 var option = '';		//global URL option var
 var TimeCard = new UI.Window();
 var SetCard = new UI.Window();
+var LogCard = new UI.Window({
+	fullscreen : true,
+	backgroundColor: 'white'
+});
 // MAIN Menu constructor
 
 var StMenu = new UI.Menu({sections: [{title: 'Run Station'}]}); //station Menu
@@ -172,7 +177,13 @@ var OsMenu = new UI.Menu({
 			{ title: 'Reset Rain Delay' },
 			{ title: 'Stop all' }
 		])
-  }]
+  },{
+		title: 'extra',
+		items: (0, [ 
+			{ title: 'Overview',
+			subtitle: 'of the last 7 days'}
+		])
+	}]
 });
 
 var firstRun = true;
@@ -503,6 +514,8 @@ function get_jp(){
 				getPrgMenu();
 				
 				show_result(); //show the results
+				
+				get_wl();	//load in background
 			},
 			function(error) {
 				// Failure!
@@ -511,6 +524,31 @@ function get_jp(){
 			}
 		); //end ajax
 }		//get prgrams
+
+function get_wl(){
+	
+	var URL = 'http://cliowald.asuscomm.com:8000/jl?pw=938aeb8eecb8fd240890f96143222273&type=wl&hist=7';	
+	return ajax(
+			{
+				url: URL,
+				type: 'json'
+			},
+			function(data){
+				if(debug){
+					console.log("Successfully loading data!");
+					console.log('Data: ' + JSON.stringify(data));
+				}
+				data_wl = data;
+
+				//updateLogCard();
+			},
+			function(error) {
+				// Failure!
+				error = true;
+				show_error();
+			}
+		); //end ajax
+}   //get controller vars -  calls jo
 
 function set_settings(){	//set controller var	
 	
@@ -688,6 +726,117 @@ function status(data){
 	return out;
 }
 
+function drawLine(x,y,z,mode,r,steps,color){
+	if(steps < 1){steps = 1;}
+	for( var i = 1; i <= z; i++){
+		if(i%steps === 0){		
+			var circle = new UI.Circle({
+				position: (mode ? new Vector2(x,y+i) : new Vector2( x+i , y)),
+				radius: r,
+				backgroundColor: color,
+			});
+
+			LogCard.add(circle);
+		}
+	}
+}
+
+function drawBar(x,y,size,width,color){
+	var rect = new UI.Rect({
+  position: new Vector2(x, y),
+  size: new Vector2(width, -size),
+  backgroundColor: color,
+	borderColor: color
+	});
+	LogCard.add(rect);
+}
+
+function drawText(x,y,bold,text,color){
+	var Text = new UI.Text({
+		position: new Vector2(x, y),
+		size: new Vector2(25, 20),
+		text: text,
+		font:(bold ? 'RESOURCE_ID_GOTHIC_14_BOLD' : 'RESOURCE_ID_GOTHIC_14'),
+		color: color,
+		textOverflow:'wrap',
+		textAlign:'center',
+		//backgroundColor:'clear'
+	});
+	LogCard.add(Text);
+}
+
+function updateLogCard(){
+	var color = 'black';
+	
+	var level0 = 150;
+	var faktor = 50; //[ox] 100% = 50px
+	
+	var mean = 0;
+	var bold = true;
+	
+	var days = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+	
+	drawLine(0, level0-faktor,139,0,0,5,color);
+	
+	for(var x = data_wl.length-1; x >= 0; x--){
+		if (x < 6){bold = false;}
+		var wl = data_wl[x][2];
+		var date = new Date(data_wl[x][3]*1000);
+		var day = date.getDay();
+		
+		//draw Bar
+		drawBar(  5+(x*20),level0, Math.round(wl/100*faktor),15,color);
+		//draw value
+		drawText(  0+(x*20),level0-Math.round(wl/100*faktor)-17,false,wl,color);
+		//draw Day
+		drawText(  0+(x*20),level0,bold,days[day],color);
+		
+		mean += wl;
+	}
+	
+	mean = Math.round(mean / data_wl.length);
+	
+	//drawText( 40, 10,1,'mean','white');
+	//drawText( 80, 10,1,mean,'white');
+	
+	var headline = new UI.Text({
+		position: new Vector2(0, -5),
+		size: new Vector2(144, 20),
+		text: '7 DAY OVERVIEW',
+		font: 'RESOURCE_ID_GOTHIC_24_BOLD',
+		color: color,
+		textOverflow:'wrap',
+		textAlign:'center',
+		//backgroundColor:'clear'
+	});
+	var text = new UI.Text({
+		position: new Vector2(0, 20),
+		size: new Vector2(144, 20),
+		text: 'avg waterlevel: ' + mean + '%',
+		font: 'RESOURCE_ID_GOTHIC_18_BOLD',
+		color: color,
+		textOverflow:'wrap',
+		textAlign:'center',
+		//backgroundColor:'clear'
+	});
+	var saveText = new UI.Text({
+		position: new Vector2(0, 35),
+		size: new Vector2(144, 20),
+		text: 'you save ' + (100-mean) + '% water',
+		font: 'RESOURCE_ID_GOTHIC_18_BOLD',
+		color: color,
+		textOverflow:'wrap',
+		textAlign:'center',
+		//backgroundColor:'clear'
+	});	
+	
+	LogCard.add(headline);
+	LogCard.add(text);
+	if (mean < 100){
+		LogCard.add(saveText);
+	}
+}
+
 OsMenu.on('select', function(e) {
   if(debug){
 		console.log('Selected item #' + e.itemIndex + ' of section #' + e.sectionIndex);
@@ -734,6 +883,18 @@ OsMenu.on('select', function(e) {
 					
 					set_settings(); //send the command
 					//OsMenu.hide();
+					break;
+
+				default: break;
+			}
+			
+			break;
+		case 2: 
+			
+			switch(e.itemIndex){
+				case 0:	//show Logs 7 Day overview
+					updateLogCard();
+					LogCard.show();
 					break;
 
 				default: break;
