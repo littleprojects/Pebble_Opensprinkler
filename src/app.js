@@ -1,20 +1,19 @@
 /**
  * Welcome to OpenSprinkler Remote!
  *
- * first Version. Just to test. v 1.2
+ * current Version. v 1.3
  *
  * Project Ideas:
- * - show logs, calc runningtime for Progs and Stations (daily, weekly, monthly) - very complex
  * - show next planned run (look for the next scheduled program) - mähhh 
  * - Info Menu wiht Version, Creator Name, Thanks to and bla bla
  * - count rain delay down
- * - check BT connection, vibe on disconnect - ask forum
  *
  * V 1.3
  * - add: update running Time (main page, station menu) counting down the time every 10 sec
  * - add: Main menu info of running and waiting stations, Rain delay, active Programs
  * - fix: dobble update at app start
- * - add: more program info (station, duration)
+ * - add: more program info (station, duration) in pProgram menu
+ * - add: show logs, show waterlevel of the last 7 days, calc the avaerage, 
  * - in progess..
  *
  * V 1.2 add features
@@ -64,7 +63,7 @@ var TimeCard = new UI.Window();
 var SetCard = new UI.Window();
 var LogCard = new UI.Window({
 	fullscreen : true,
-	backgroundColor: 'white'
+	backgroundColor: 'black'
 });
 // MAIN Menu constructor
 
@@ -527,7 +526,7 @@ function get_jp(){
 
 function get_wl(){
 	
-	var URL = 'http://cliowald.asuscomm.com:8000/jl?pw=938aeb8eecb8fd240890f96143222273&type=wl&hist=7';	
+	var URL = 'http://cliowald.asuscomm.com:8000/jl?pw=938aeb8eecb8fd240890f96143222273&type=wl&hist=8';	
 	return ajax(
 			{
 				url: URL,
@@ -540,6 +539,7 @@ function get_wl(){
 				}
 				data_wl = data;
 
+				updateLogCard();
 				//updateLogCard();
 			},
 			function(error) {
@@ -756,7 +756,7 @@ function drawText(x,y,bold,text,color){
 		position: new Vector2(x, y),
 		size: new Vector2(25, 20),
 		text: text,
-		font:(bold ? 'RESOURCE_ID_GOTHIC_14_BOLD' : 'RESOURCE_ID_GOTHIC_14'),
+		font:(bold ? 'RESOURCE_ID_GOTHIC_14_BOLD' : 'RESOURCE_ID_GOTHIC_14_BOLD'),
 		color: color,
 		textOverflow:'wrap',
 		textAlign:'center',
@@ -766,7 +766,7 @@ function drawText(x,y,bold,text,color){
 }
 
 function updateLogCard(){
-	var color = 'black';
+	var color = 'white';
 	
 	var level0 = 150;
 	var faktor = 50; //[ox] 100% = 50px
@@ -795,9 +795,6 @@ function updateLogCard(){
 	}
 	
 	mean = Math.round(mean / data_wl.length);
-	
-	//drawText( 40, 10,1,'mean','white');
-	//drawText( 80, 10,1,mean,'white');
 	
 	var headline = new UI.Text({
 		position: new Vector2(0, -5),
@@ -893,7 +890,6 @@ OsMenu.on('select', function(e) {
 			
 			switch(e.itemIndex){
 				case 0:	//show Logs 7 Day overview
-					updateLogCard();
 					LogCard.show();
 					break;
 
@@ -999,6 +995,12 @@ card.on('accelTap', function(e) {
   if(debug){console.log("Accel TAP");}
 	Vibe.vibrate('short');
 	update();
+});
+
+LogCard.on('click', 'select', function() {
+	if(debug){console.log('Click select!');}
+	// Show the Menu, hide the splash
+	LogCard.hide();
 });
 
 // Make the request
