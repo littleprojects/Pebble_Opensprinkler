@@ -13,8 +13,7 @@
  * - add: Main menu info of running and waiting stations, Rain delay, active Programs
  * - fix: dobble update at app start
  * - add: more program info (station, duration) in pProgram menu
- * - add: show logs, show waterlevel of the last 7 days, calc the avaerage, 
- * - in progess..
+ * - add: show logs, show waterlevel of the last 7 days, calc the avaerage
  *
  * V 1.2 add features
  * - add: Run Programs Menu to run Test and Run-Once Progs
@@ -526,7 +525,7 @@ function get_jp(){
 
 function get_wl(){
 	
-	var URL = 'http://cliowald.asuscomm.com:8000/jl?pw=938aeb8eecb8fd240890f96143222273&type=wl&hist=8';	
+	var URL = 'http://' + settings.link + '/jl?pw=' + settings.pass + '&type=wl&hist=8';	
 	return ajax(
 			{
 				url: URL,
