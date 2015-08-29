@@ -1,24 +1,16 @@
 # Pebble_Opensprinkler
 
-/**
- * Welcome to OpenSprinkler for Pebble! 
- * 
- * by David Lenk
- *
- * Project Ideas:
- * - show the Sprinkler Programs in the queue
- * - 
- *
- * V 1.1 bugfix
- * - fix: last run station name error
- * - add: show sunrise and sunset time
- *
- * V 1.0 init release
- * - show status and running stations
- * - show water lever & last running station & last updatetime
- * - set rain delay in hours
- * - set stations manual on in minutes
- * - stop all station function
- */
+Welcome to OpenSprinkler for Pebble! 
+ 
+by David Lenk
 
-Tested with PEBBLE SMARTWATCH and OpenSprinkler API 2.1.4
+- show running and waiting station
+- start station and run-once-program
+- stop all station function
+- set rain delay
+- reset rain delay
+- show 7 day overview
+
+Tested with PEBBLE SMARTWATCH and OpenSprinkler API 2.1.4 (no SSL)
+
+
