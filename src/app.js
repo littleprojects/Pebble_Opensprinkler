@@ -777,20 +777,21 @@ function updateLogCard(){
 	
 	drawLine(0, level0-faktor,139,0,0,5,color);
 	
-	for(var x = data_wl.length-1; x >= 0; x--){
-		if (x < 6){bold = false;}
-		var wl = data_wl[x][2];
-		var date = new Date(data_wl[x][3]*1000);
-		var day = date.getDay();
+	for(var x = 0; x < data_wl.length; x++){
+		if(x < 7){
+			//if (x < 6){bold = false;}
+			var wl = data_wl[x][2];
+			var date = new Date(data_wl[x][3]*1000);
+
+			//draw Bar
+			drawBar(  5+(x*20),level0, Math.round(wl/100*faktor),15,color);
+			//draw value
+			drawText(  0+(x*20),level0-Math.round(wl/100*faktor)-17,false,wl,color);
+			//draw Day
+			drawText(  0+(x*20),level0,bold,days[date.getDay()],color);
 		
-		//draw Bar
-		drawBar(  5+(x*20),level0, Math.round(wl/100*faktor),15,color);
-		//draw value
-		drawText(  0+(x*20),level0-Math.round(wl/100*faktor)-17,false,wl,color);
-		//draw Day
-		drawText(  0+(x*20),level0,bold,days[day],color);
-		
-		mean += wl;
+			mean += wl;
+		}
 	}
 	
 	mean = Math.round(mean / data_wl.length);
