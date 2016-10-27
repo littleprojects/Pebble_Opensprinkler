@@ -7,6 +7,8 @@
  * - show next planned run (look for the next scheduled program) - mähhh 
  * - Info Menu wiht Version, Creator Name, Thanks to and bla bla
  * - count rain delay down
+ * - show waterlevel calc (mean temp * % + mean humity * % + Rainfall * %) or so
+ * - starttime (endtime - runtime) of the lastrun 
  *
  * V 1.3
  * - add: update running Time (main page, station menu) counting down the time every 10 sec
@@ -34,6 +36,34 @@
  * - set rain delay in hours
  * - set stations manual on in minutes
  * - stop all station function
+ 
+ //detect the watch model - colors or no colors
+ // https://developer.getpebble.com/guides/best-practices/multi-platform/
+ var current_watch;
+    if(Pebble.getActiveWatchInfo) {
+      try {
+        current_watch = Pebble.getActiveWatchInfo();
+      } catch(err) {
+        current_watch = {
+          platform: "basalt",
+        };
+      }
+    } else {
+      current_watch = {
+        platform: "aplite",
+      };
+    }
+		
+	if (Pebble.getActiveWatchInfo) {
+  	// Available.
+  	var info = Pebble.getActiveWatchInfo();
+
+  	console.log('Pebble model: ' + info.model);
+	} else {
+  // Gracefully handle no info available
+
+	}
+		
  */
 
 var UI = require('ui');
@@ -42,7 +72,38 @@ var Accel = require('ui/accel');
 var Vibe = require('ui/vibe');
 var Vector2 = require('vector2');
 
-var debug = false;	//true/false;  //send output to the log console
+var debug = true;	//true/false;  //send output to the log console
+var demo = true;		//connect to the demo App on http://demo.opensprinkler.com/
+
+var pebble = {
+	colored : false,
+	round 	: false,
+	timeline: false,
+	//model: "",
+	getModel: function(){
+		if (Pebble.getActiveWatchInfo) {
+  	// Available.
+  		var info = Pebble.getActiveWatchInfo();
+			if(info.platform === 'basalt'){
+				this.colored = true;
+			}else if(info.platform === 'chalk'){
+				this.colored = true;
+				this.round = true;
+			}
+			
+			if(info.firmware.major > 2){
+				this.timeline = true;
+			}
+  		//console.log('Pebble model: ' + info.model + ' ' + info.platform);
+			console.log('Farbe: ' + this.colored + ', Rund: ' + this.round + ', Timeline: ' + this.timeline + ' Firmware: '+ info.firmware.major);
+		} else {
+  	// Gracefully handle no info available
+			//console.log('Pebble model: i have no idea...');
+		}
+	}	
+};
+
+pebble.getModel();
 
 var data_jc;	//Controller Variables
 var data_jo;	//Options
@@ -58,19 +119,19 @@ var StationIds	= [];
 var RunningTime = 0;//global URL RunningTime
 var mode = '';			//global URL mode var			URL:Port/mode?pw=password&option=RunningTime
 var option = '';		//global URL option var
-var TimeCard = new UI.Window();
-var SetCard = new UI.Window();
+var TimeCard = new UI.Window({backgroundColor: (pebble.colered ? 'cyan' : 'white')});
+var SetCard = new UI.Window({backgroundColor: (pebble.colered ? 'cyan' : 'white')});
 var LogCard = new UI.Window({
 	fullscreen : true,
-	backgroundColor: 'black'
+	backgroundColor: (pebble.colered ? 'dukeBlue' : 'black')
 });
 // MAIN Menu constructor
 
 var StMenu = new UI.Menu({sections: [{title: 'Run Station'}]}); //station Menu
 var PrgMenu = new UI.Menu({sections: [{title: 'Run Program'}]}); //Program Menu
 var updateTime = '';
-var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','kickstart engine','searching satellites','call Dr. How','drinking coffe','overtaking World',
-								'licking ice cream','expanding the Universe','solving 0/0','counting stars','BAZINGA!','00100101 OK']; //'deleting internet',
+var LoadSpell = ['calculate Pi','polishing monocle','rendering cats','feeding cats','bending water','starting magic','kickstart engine','searching satellites','calling Dr. How','drinking coffe','overtaking World',
+								'licking ice cream','expanding the Universe','solving 0/0','counting stars','BAZINGA!','00100101 OK','warming hyperdrive']; //'deleting internet',
 
 var SetCardText = new UI.Text({
   position: new Vector2(10, 50),
@@ -80,14 +141,14 @@ var SetCardText = new UI.Text({
   color:'black',
   textOverflow:'wrap',
   textAlign:'center',
-  backgroundColor:'white'
+  backgroundColor: (pebble.colered ? 'cyan' : 'white')
 });
 
 // Create a background Rect
 var bgRect = new UI.Rect({
   position: new Vector2(10, 30),
   size: new Vector2(124, 100),
-  backgroundColor: 'white',
+  backgroundColor: (pebble.colered ? 'cyan' :'white'),
 	borderColor: 'clear'
 });
 var TimeCardTitle = new UI.Text({
@@ -98,7 +159,7 @@ var TimeCardTitle = new UI.Text({
   color:'black',
   textOverflow:'wrap',
   textAlign:'center',
-  backgroundColor:'white'
+	backgroundColor:(pebble.colered ? 'cyan' :'white')
 });
 var TimeCardTime = new UI.Text({
   position: new Vector2(10, 50),
@@ -108,7 +169,7 @@ var TimeCardTime = new UI.Text({
   color:'black',
   textOverflow:'wrap',
   textAlign:'center',
-  backgroundColor:'white'
+  backgroundColor:(pebble.colered ? 'cyan' :'white')
 });
 var TimeCardInfo = new UI.Text({
   position: new Vector2(10, 95),
@@ -118,7 +179,7 @@ var TimeCardInfo = new UI.Text({
   color:'black',
   textOverflow:'wrap',
   textAlign:'center',
-  backgroundColor:'white'
+  backgroundColor:(pebble.colered ? 'cyan' :'white')
 });
 
 // Add Rect to Window
@@ -132,9 +193,9 @@ Accel.init();
 
 //settings object
 var settings = {
-	link : "",
-	pass: "",
-	name : "",
+	link : "",		//link to the station without http://  and no / at the end  (demo.opensprinkler.com:80)
+	pass: "",			//password as md5 hash
+	name : "",		//just the name of the station
 	save : function(){
 		var i = 0;
 		localStorage.setItem(i++,this.link);
@@ -161,6 +222,12 @@ var settings = {
 //load the Setting at start up
 settings.load();
 
+if(demo){
+	settings.link = "demo.opensprinkler.com";
+	settings.pass = "opendoor";
+	settings.name = "Demo";
+}
+
 var OsMenu = new UI.Menu({
   sections: [{
     title: settings.name,
@@ -185,7 +252,9 @@ var OsMenu = new UI.Menu({
 });
 
 var firstRun = true;
-if(settings.pass !== ''){firstRun = false;}
+//if(settings.pass !== ''){firstRun = false;}  
+if(settings.pass){firstRun = false;}  
+
 
 // Create a Card with title and subtitle
 var card = new UI.Card({
@@ -193,7 +262,8 @@ var card = new UI.Card({
 	subtitle	: (firstRun ? 'Welcome' : 'Loading...'),
 	body			: (firstRun ? '\nPlease go the settings page.' : ''),
 	scrollable: true,
-	style			: 'large' //small
+	style			: 'large', //small
+	backgroundColor: (pebble.colered ? 'cyan' :'white')
 });
 
 
@@ -356,10 +426,13 @@ function getPrgMenu() {
 //main Page
 function show_error(){
 	//show the error
-	
-	if(debug){console.log('Failed loading data: ' + error);}
-	card.subtitle('ERROR:');
-	card.body('No OpenSprinkler found. Please check the connection settings.');	
+	if(error){
+		if(debug){console.log('Failed loading data: ' + error);}
+		card.subtitle('ERROR:');
+		//card.subtitleColor('red');
+		card.backgroundColor((pebble.colored ? 'red' : 'white'));
+		card.body('No OpenSprinkler found. Please check the connection settings.');	
+	}
 } //build the error Page
 
 function show_result(){
@@ -426,7 +499,8 @@ function get_jc(){
 			},
 			function(data){
 				if(debug){
-					console.log("Successfully loading data!");
+					console.log('Link: ' + URL);
+					console.log("Successfully loading data! get_jc");
 					console.log('Data: ' + JSON.stringify(data));
 				}
 				data_jc = data;
@@ -437,6 +511,11 @@ function get_jc(){
 			},
 			function(error) {
 				// Failure!
+				if(debug){
+					console.log(URL);
+					console.log('ERROR get_jc: ' + JSON.stringify(data_jc));
+				}
+				
 				error = true;
 				show_error();
 			}
@@ -453,7 +532,8 @@ function get_jo(){
 			},
 			function(data){
 				if(debug){
-					console.log("Successfully loading data!");
+					console.log("Successfully loading data! (get_jo)");
+					console.log(URL);
 					console.log('Data: ' + JSON.stringify(data));
 				}
 				data_jo = data;
@@ -784,11 +864,11 @@ function updateLogCard(){
 			var date = new Date(data_wl[x][3]*1000);
 
 			//draw Bar
-			drawBar(  5+(x*20),level0, Math.round(wl/100*faktor),15,color);
+			drawBar(  5+(x*20), level0, Math.round(wl/100*faktor), 15, color);
 			//draw value
-			drawText(  0+(x*20),level0-Math.round(wl/100*faktor)-17,false,wl,color);
+			drawText(  0+(x*20), level0-Math.round(wl/100*faktor)-17, false, wl, color);
 			//draw Day
-			drawText(  0+(x*20),level0,bold,days[date.getDay()],color);
+			drawText(  0+(x*20), level0, bold, days[date.getDay()], color);
 		
 			mean += wl;
 		}

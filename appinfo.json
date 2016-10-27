@@ -11,17 +11,17 @@
             {
                 "file": "images/menu_icon.png",
                 "name": "IMAGE_MENU_ICON",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/logo_splash.png",
                 "name": "IMAGE_LOGO_SPLASH",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "images/tile_splash.png",
                 "name": "IMAGE_TILE_SPLASH",
-                "type": "png"
+                "type": "bitmap"
             },
             {
                 "file": "fonts/UbuntuMono-Regular.ttf",
@@ -29,15 +29,19 @@
                 "type": "font"
             },
             {
-                "file": "images/os_min.png",
+                "file": "images/os_min_25.png",
                 "menuIcon": true,
-                "name": "IMAGES_OS_MIN_PNG",
-                "type": "png"
+                "name": "IMAGES_OS_MIN_25_PNG",
+                "type": "bitmap"
             }
         ]
     },
     "sdkVersion": "3",
     "shortName": "OpenSprinkler",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
     "uuid": "13eae2e9-bdc8-4cc7-a013-2dfd37b33e55",
     "versionCode": 1,
     "versionLabel": "1.3",
