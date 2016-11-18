@@ -72,8 +72,11 @@ var Accel = require('ui/accel');
 var Vibe = require('ui/vibe');
 var Vector2 = require('vector2');
 
-var debug = true;	//true/false;  //send output to the log console
-var demo = true;		//connect to the demo App on http://demo.opensprinkler.com/
+var settings_url = "http://51015977.de.strato-hosting.eu//pebble/opensprinkler/os1.html"; //link to the settings website
+
+var debug = false;	//true/false;  //send output to the log console
+var demo = false;		//connect to the demo App on http://demo.opensprinkler.com/ (setup connection data in if(demo)...)
+//demo is for testing
 
 var pebble = {
 	colored : false,
@@ -222,10 +225,11 @@ var settings = {
 //load the Setting at start up
 settings.load();
 
+//manual login data
 if(demo){
-	settings.link = "demo.opensprinkler.com";
-	settings.pass = "opendoor";
-	settings.name = "Demo";
+	settings.link = "demo.opensprinkler.com";			//without "http://"" 
+	settings.pass = "opendoor";			//normaly a MD5 hash of the password
+	settings.name = "Demo";					//just the name of OpenSprinkler system
 }
 
 var OsMenu = new UI.Menu({
@@ -318,7 +322,7 @@ function sec2string(sec){
 Pebble.addEventListener("showConfiguration",
   function(e) {
     //Load the remote config page
-    Pebble.openURL("https://dl.dropboxusercontent.com/u/46109611/Pebble/opensprinkler/os1.html");
+    Pebble.openURL(settings_url);
   }
 );
 
